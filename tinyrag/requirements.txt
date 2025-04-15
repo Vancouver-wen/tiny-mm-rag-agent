@@ -1,0 +1,5 @@
+
+fitz
+frontend
+PyMuPDF
+modelscope

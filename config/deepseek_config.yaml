@@ -1,0 +1,16 @@
+base_dir: "data/abc_db"
+llm_model_id: "/data/wzh_fd/workspace/Models/DeepSeek-R1-Distill-Qwen-7B"
+
+
+
+# 几种向量化模型的比较： https://blog.csdn.net/hero272285642/article/details/140466752
+# 使用智源的模型作为 embedding 和 reranker
+# https://huggingface.co/BAAI/bge-small-zh-v1.5#model-list
+emb_model_id: "/data/wzh_fd/workspace/Models/bge-base-zh-v1.5" # BGE模型，全称为BAAI General Embedding模型  
+ranker_model_id: "/data/wzh_fd/workspace/Models/bge-reranker-base" # BAAI (Beijing Academy of Artificial Intelligence)
+
+device: "cuda" # cpu cuda
+sent_split_model_id: "/data/wzh_fd/workspace/Models/nlp_bert_document-segmentation_chinese-base"
+sent_split_use_model: false
+sentence_size: 256
+model_type: "deepseek"

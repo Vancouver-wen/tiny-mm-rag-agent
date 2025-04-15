@@ -1,0 +1,27 @@
+torch 
+huggingface-hub
+loguru
+numpy
+transformers
+sentence_transformers
+pymupdf # fitz
+frontend
+nltk
+python-docx # docx
+python-pptx
+markdown
+bs4
+faiss-cpu # ==1.9.0
+jieba
+addict
+datasets==2.16.0
+accelerate
+easydict
+joblib
+modelscope
+jsonlines
+PyYaml
+
+# https://download.pytorch.org/whl/cu113/torch-1.12.1%2Bcu113-cp39-cp39-linux_x86_64.whl
+# -i https://pypi.tuna.tsinghua.edu.cn/simple
+# export PATH=$PATH:/data/wzh_fd/workspace/google-chrome/usr/bin
