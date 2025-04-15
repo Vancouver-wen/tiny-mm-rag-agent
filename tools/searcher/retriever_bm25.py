@@ -1,3 +1,12 @@
+import os
+import pickle
+import json
+from typing import List, Any, Tuple
+
+import jieba
+from tqdm import tqdm
+from joblib import Parallel,delayed
+
 
 import math
 import numpy as np
@@ -149,85 +158,82 @@ class OkapiBM25(BM25):
                                                (q_freq + self.k1 * (1 - self.b + self.b * doc_len / self.avgdl)))
         return score.tolist()
 
-class BM25L(BM25):
-    """ BM25的扩展版本, 通过引入ctd来调整文档长度的影响
-    """
-    def __init__(self, corpus, tokenizer=None, k1=1.5, b=0.75, delta=0.5):
-        super().__init__(corpus, tokenizer)
-        self.k1 = k1
-        self.b = b
-        self.delta = delta  # 调整IDF的计算
+class BM25Retriever:
+    def __init__(self, txt_list: List[str]=[], base_dir="data/db/bm_corpus") -> None:
+        self.data_list = txt_list
+        self.base_dir = base_dir
+        
+        if not os.path.exists(self.base_dir):
+            os.makedirs(self.base_dir, exist_ok=True)
+        
+    def build(self, docs: List[str]):
+        self.data_list = docs
+        self.tokenized_corpus = Parallel(n_jobs=-1,backend="threading")(
+            delayed(self.tokenize)(doc)
+            for doc in tqdm(docs)
+        )
+        # for doc in tqdm(self.data_list, desc="bm25 build "):
+        #     self.tokenized_corpus.append(self.tokenize(doc))
+        # 初始化 BM25Okapi 实例
+        self.bm25 = OkapiBM25(self.tokenized_corpus)
 
-    def _calc_idf(self, nd):
-        """ 计算文档和语料库中词语的逆文档频率（IDF）。
-            log(N + 1) - log(freq + 0.5)； N是文档总数，freq是文档频率
+    def tokenize(self,  text: str) -> List[str]:
+        """ 
+        使用jieba进行中文分词。
         """
-        for word, freq in nd.items():
-            idf = math.log(self.corpus_size + 1) - math.log(freq + 0.5)
-            self.idf[word] = idf
+        result=list(jieba.cut_for_search(text))
+        return result
 
-    def get_scores(self, query):
-        """ 计算 query 与文档的相关性得分。
+    def save(self, db_name=""):
+        """ 
+        对数据进行分词并保存到json文件中
         """
-        score = np.zeros(self.corpus_size)
-        doc_len = np.array(self.doc_len)
-        for q in query:
-            q_freq = np.array([(doc.get(q) or 0) for doc in self.doc_freqs])
-            ctd = q_freq / (1 - self.b + self.b * doc_len / self.avgdl)
-            score += (self.idf.get(q) or 0) * (self.k1 + 1) * (ctd + self.delta) / \
-                     (self.k1 + ctd + self.delta)
-        return score
+        db_name = db_name if db_name != "" else "bm25_data"
+        db_file_path = os.path.join(self.base_dir, db_name + ".json")
+        # 保存分词结果
+        data_to_save = {
+            "data_list": self.data_list,
+            "tokenized_corpus": self.tokenized_corpus
+        }
+        
+        with open(db_file_path, 'w',encoding='UTF-8') as f:
+            json.dump(data_to_save, f,ensure_ascii=False,indent=4)
 
-    def get_batch_scores(self, query, doc_ids):
-        """ 计算查询与指定文档集的相关性得分。
+    def load(self, db_name=""):
+        """ 
+        从文件中读取分词后的语料库，并重新初始化 BM25Okapi 实例。
         """
-        assert all(di < len(self.doc_freqs) for di in doc_ids)
-        score = np.zeros(len(doc_ids))
-        doc_len = np.array(self.doc_len)[doc_ids]
-        for q in query:
-            q_freq = np.array([(self.doc_freqs[di].get(q) or 0) for di in doc_ids])
-            ctd = q_freq / (1 - self.b + self.b * doc_len / self.avgdl)
-            score += (self.idf.get(q) or 0) * (self.k1 + 1) * (ctd + self.delta) / \
-                     (self.k1 + ctd + self.delta)
-        return score.tolist()
-
-
-class BM25Plus(BM25):
-    """ BM25的扩展版本, 通过delta来进一步调整得分
-    """
-    def __init__(self, corpus, tokenizer=None, k1=1.5, b=0.75, delta=1):
-        super().__init__(corpus, tokenizer)
-        self.k1 = k1
-        self.b = b
-        self.delta = delta  # 调整得分计算
-
-    def _calc_idf(self, nd):
-        """ 计算文档和语料库中词语的逆文档频率（IDF）。
-            log(N + 1) - log(freq)
+        db_name = db_name if db_name != "" else "bm25_data"
+        db_file_path = os.path.join(self.base_dir, db_name + ".json")
+        
+        with open(db_file_path, 'r',encoding="UTF-8") as f:
+            data = json.load(f)
+        
+        self.data_list = data["data_list"]
+        self.tokenized_corpus = data["tokenized_corpus"]
+        
+        # 重新初始化 BM25Okapi 实例
+        self.bm25 = OkapiBM25(self.tokenized_corpus)
+    
+    def search(self, query: str, top_n=5) -> List[Tuple[int, str, float]]:
+        """ 
+        使用BM25算法检索最相似的文本。
         """
-        for word, freq in nd.items():
-            idf = math.log(self.corpus_size + 1) - math.log(freq)
-            self.idf[word] = idf
+        if self.tokenized_corpus is None:
+            raise ValueError("Tokenized corpus is not loaded or generated.")
 
-    def get_scores(self, query):
-        """ 计算 query 与文档的相关性得分。
-        """
-        score = np.zeros(self.corpus_size)
-        doc_len = np.array(self.doc_len)
-        for q in query:
-            q_freq = np.array([(doc.get(q) or 0) for doc in self.doc_freqs])
-            score += (self.idf.get(q) or 0) * (self.delta + (q_freq * (self.k1 + 1)) /
-                                               (self.k1 * (1 - self.b + self.b * doc_len / self.avgdl) + q_freq))
-        return score
+        tokenized_query = self.tokenize(query)
+        scores = self.bm25.get_scores(tokenized_query)
 
-    def get_batch_scores(self, query, doc_ids):
-        """ 计算查询与指定文档集的相关性得分。
-        """
-        assert all(di < len(self.doc_freqs) for di in doc_ids)
-        score = np.zeros(len(doc_ids))
-        doc_len = np.array(self.doc_len)[doc_ids]
-        for q in query:
-            q_freq = np.array([(self.doc_freqs[di].get(q) or 0) for di in doc_ids])
-            score += (self.idf.get(q) or 0) * (self.delta + (q_freq * (self.k1 + 1)) /
-                                               (self.k1 * (1 - self.b + self.b * doc_len / self.avgdl) + q_freq))
-        return score.tolist()
+        # 获取分数最高的前 N 个文本的索引
+        top_n_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_n]
+
+        # 构建并返回结果列表
+        result = [
+            (i, self.data_list[i], scores[i])
+            for i in top_n_indices
+        ]
+
+        return result
+
+

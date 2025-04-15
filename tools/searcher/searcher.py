@@ -9,10 +9,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
-from tools.embedding.hf_emb import HFSTEmbedding
-from tools.searcher.bm25_recall.bm25_retriever import BM25Retriever
-from tools.searcher.emb_recall.emb_retriever import EmbRetriever
-from tools.searcher.reranker.reanker_bge_m3 import RerankerBGEM3
+from tools.searcher.retriever_bm25 import BM25Retriever
+from tools.searcher.retriever_embed import EmbRetriever
+from tools.searcher.reanker import RerankerBGEM3
 
 def process_text(doc, emb_model, emb_retriever):
     doc_emb = emb_model.get_embedding(doc)
@@ -20,10 +19,6 @@ def process_text(doc, emb_model, emb_retriever):
 
 class Searcher:
     def __init__(self, emb_model_id: str, ranker_model_id: str, device:str="cpu", base_dir: str="data/db") -> None:
-        # self.base_dir = "data/db"
-        # emb_model_id = "models/bge-small-zh-v1.5"
-        # ranker_model_id = "models/bge-reranker-base"
-        # device = "cpu"
         self.base_dir = base_dir
         emb_model_id = emb_model_id
         ranker_model_id = ranker_model_id

@@ -1,15 +1,30 @@
 import os
 import json
 from typing import Dict, List, Optional, Tuple, Union
+from abc import ABC, abstractmethod
 
 import torch
 # from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 from modelscope import AutoModelForCausalLM,AutoTokenizer,AutoConfig # 从modelscope也会自动链接到transformers包
 from loguru import logger
 
-from tools.llm.base_llm import BaseLLM
 
-class DeekSeekLLM(BaseLLM):
+class BaseLLM(ABC):
+    """
+    Base class for embeddings
+    """
+    def __init__(self, model_id_key: str, device:str = "cpu", is_api=False) -> None:
+        super().__init__()
+        self.model_id_key = model_id_key
+        self.device = device
+        self.is_api = is_api
+
+    @abstractmethod
+    def generate(self, content: str) -> str:
+        raise NotImplemented
+
+
+class DeekSeek(BaseLLM):
     def __init__(self, model_id_key: str, device: str = "cpu", is_api=False) -> None:
         super().__init__(model_id_key, device, is_api)
 

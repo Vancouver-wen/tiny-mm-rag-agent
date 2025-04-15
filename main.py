@@ -8,6 +8,7 @@ sys.path.append(".")
 from loguru import logger
 from tqdm import tqdm
 from easydict import EasyDict
+import jsonlines
 
 from tools import RAGConfig, TinyRAG
 from tools.utils import read_json,read_yaml
@@ -20,14 +21,12 @@ def main(args):
     logger.info("tiny rag init success!")
 
     if args.type == "build":
-        raw_data_list = read_json(args.path)
-        logger.info("load raw data success! ")
-        # 数据太多了，随机采样 100 条数据
-        # raw_data_part = random.sample(raw_data_list, 100)
-
-        text_list = [item["completion"] for item in raw_data_list]
-
-        tiny_rag.build(text_list)
+        chunks=[]
+        chunk_path=args.chunk_path
+        with jsonlines.open(chunk_path,'r') as reader:
+            for obj in reader:
+                chunks.append(obj)
+        tiny_rag.build(chunks)
     elif args.type == "search":
         tiny_rag.load()
         query = "首先介绍一下你是谁？ 然后介绍农业银行。"
