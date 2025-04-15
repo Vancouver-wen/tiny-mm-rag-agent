@@ -1,7 +1,5 @@
 import os
 import json
-from typing import Dict, List, Optional, Tuple, Union
-from abc import ABC, abstractmethod
 
 import torch
 # from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
@@ -9,22 +7,7 @@ from modelscope import AutoModelForCausalLM,AutoTokenizer,AutoConfig # 从models
 from loguru import logger
 
 
-class BaseLLM(ABC):
-    """
-    Base class for embeddings
-    """
-    def __init__(self, model_id_key: str, device:str = "cpu", is_api=False) -> None:
-        super().__init__()
-        self.model_id_key = model_id_key
-        self.device = device
-        self.is_api = is_api
-
-    @abstractmethod
-    def generate(self, content: str) -> str:
-        raise NotImplemented
-
-
-class DeekSeek(BaseLLM):
+class DeepSeek:
     def __init__(self, model_id_key: str, device: str = "cpu", is_api=False) -> None:
         super().__init__(model_id_key, device, is_api)
 
@@ -55,23 +38,12 @@ class DeekSeek(BaseLLM):
         # 设置模型为评估模式
         self.model.eval()
 
-    def generate(self, content: str) -> str:
-        # 这里的message就是 transformers库的模板 
-        # https://huggingface.co/docs/transformers/main/zh/chat_templating
-        messages = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": content}
-        ]
+    def generate(self, messages:list[dict]) -> str:
         text = self.tokenizer.apply_chat_template(
             messages,
             tokenize=False,
             add_generation_prompt=True
         )
-        logger.info(f"\n => content:{content} \n => apply chat template:{text}")
-        """ 每个模型都有自己的  chat template 主要是一些 特殊的token使用 比如 句子开始  人物角色  以及<think>等思维链
-        content:你是谁？ 请介绍一下农业银行。 
-        apply chat template:<｜begin▁of▁sentence｜>You are a helpful assistant.<｜User｜>你是谁？ 请介绍一下农业银行。<｜Assistant｜><think>
-        """
 
         model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
         batch_input_ids=model_inputs['input_ids']
