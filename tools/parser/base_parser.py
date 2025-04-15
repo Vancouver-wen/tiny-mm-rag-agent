@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import List, Any, Optional, Dict
 
-from tinyrag.embedding.base_emb import BaseEmbedding
+from tools.embedding.base_emb import BaseEmbedding
 
 class BaseParser:
     """

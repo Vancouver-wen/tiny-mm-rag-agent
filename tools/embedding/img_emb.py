@@ -1,6 +1,6 @@
 import torch
 from typing import Dict, List, Optional, Tuple, Union, Any
-from tinyrag.embedding.base_emb import BaseEmbedding
+from tools.embedding.base_emb import BaseEmbedding
 from sentence_transformers import SentenceTransformer
 
 class ImgEmbedding(BaseEmbedding):

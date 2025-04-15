@@ -4,10 +4,11 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
+from loguru import logger
 
-from tinyrag.llm.base_llm import BaseLLM
+from tools.llm.base_llm import BaseLLM
 
-class TinyLLM(BaseLLM):
+class Qwen2LLM(BaseLLM):
     def __init__(self, model_id_key: str, device: str = "cpu", is_api=False) -> None:
         super().__init__(model_id_key, device, is_api)
 
@@ -21,7 +22,6 @@ class TinyLLM(BaseLLM):
         # 加载分词器
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.model_id_key,  # 分词器标识符
-            use_fast=False,
             trust_remote_code=True
         )
         
@@ -38,19 +38,38 @@ class TinyLLM(BaseLLM):
         self.model.eval()
 
     def generate(self, content: str) -> str:
-        sys_text = "你是由wdndev开发的个人助手。"
-        input_txt = "\n".join(["<|system|>", sys_text.strip(), 
-                            "<|user|>", content.strip(), 
-                            "<|assistant|>"]).strip() + "\n"
-        model_inputs = self.tokenizer(input_txt, return_tensors="pt").to(self.model.device)
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": content}
+        ]
+        text = self.tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True
+        )
+        logger.info(f"\n => content:{content} \n => apply chat template:{text}")
+        """每个模型都有自己的  chat template 主要是一些 特殊的token使用 比如 句子开始  人物角色
+        => content:你是谁？ 请介绍一下农业银行。 
+        => apply chat template:<|im_start|>system
+        You are a helpful assistant.<|im_end|>
+        <|im_start|>user
+        你是谁？ 请介绍一下农业银行。<|im_end|>
+        <|im_start|>assistant
+        """
+
+        model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
+
         generated_ids = self.model.generate(
             model_inputs.input_ids,
-            max_new_tokens=200
+            max_new_tokens=512
         )
         generated_ids = [
             output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
         ]
+
         response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
         return response
+
+
 

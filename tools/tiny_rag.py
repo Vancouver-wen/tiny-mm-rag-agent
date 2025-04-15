@@ -12,10 +12,10 @@ from tqdm import tqdm
 
 from joblib import Parallel,delayed
 
-from tinyrag import BaseLLM, Qwen2LLM, TinyLLM, DeekSeekLLM
-from tinyrag import Searcher
-from tinyrag import SentenceSplitter
-from tinyrag.utils import write_list_to_jsonl
+from tools import BaseLLM, Qwen2LLM, TinyLLM, DeekSeekLLM
+from tools import Searcher
+from tools import SentenceSplitter
+from tools.utils import write_list_to_jsonl
 
 # 在python中定义字符串可以用 ' ' 或者 " " 或者  """ """
 # 区别在于: ' ' 或者 " " 是单行字符串，如果需要换行则需要手动 \n

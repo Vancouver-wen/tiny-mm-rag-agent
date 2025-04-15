@@ -5,7 +5,7 @@ from sentence_transformers import SentenceTransformer, util
 # SentenceTransformers is a Python framework for state-of-the-art sentence, text and image embeddings.
 from tqdm import tqdm
 
-from tinyrag.embedding.base_emb import BaseEmbedding
+from tools.embedding.base_emb import BaseEmbedding
 
 
 class HFSTEmbedding(BaseEmbedding):

@@ -9,18 +9,11 @@ from loguru import logger
 from tqdm import tqdm
 from easydict import EasyDict
 
-from tinyrag import RAGConfig, TinyRAG
-from tinyrag.utils import read_json,read_yaml
+from tools import RAGConfig, TinyRAG
+from tools.utils import read_json,read_yaml
     
 
-def main():
-    parser = argparse.ArgumentParser(description='Tiny RAG Argument Parser')
-    parser.add_argument("-t", '--type', type=str, default="search", help='Tiny RAG Type [build, search]')
-    parser.add_argument("-c", '--config', type=str, default="config/qwen2_config.json", help='Tiny RAG config')
-    parser.add_argument('-p', "--path",  type=str, default="data/raw_data/wikipedia-cn-20230720-filtered.json", help='Tiny RAG data path')
-
-    args = parser.parse_args()
-    
+def main(args):
     config = read_yaml(args.config)
     rag_config = RAGConfig(**config)
     tiny_rag = TinyRAG(config=rag_config)
@@ -44,5 +37,12 @@ def main():
         raise NotImplementedError(f"unknown args.type:{args.type}")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description='Tiny RAG Argument Parser')
+    parser.add_argument("-t", '--type', type=str, default="search", help='Tiny RAG Type [build, search]')
+    parser.add_argument("-c", '--config', type=str, default="config/deepseek_config.yaml", help='Tiny RAG config')
+    parser.add_argument('-p', "--path",  type=str, default="data/raw_data/wikipedia-cn-20230720-filtered.json", help='Tiny RAG data path')
+
+    args = parser.parse_args()
+    
+    main(args)
 

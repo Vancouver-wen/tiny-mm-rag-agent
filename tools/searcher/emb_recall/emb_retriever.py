@@ -2,7 +2,7 @@ import os
 import json
 
 # from emb_index import EmbIndex
-from tinyrag.searcher.emb_recall.emb_index import EmbIndex
+from tools.searcher.emb_recall.emb_index import EmbIndex
 
 class EmbRetriever:
     def __init__(self, index_dim: int, base_dir="data/db/faiss_idx") -> None:

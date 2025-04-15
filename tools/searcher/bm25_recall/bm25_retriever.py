@@ -7,7 +7,7 @@ import jieba
 from tqdm import tqdm
 from joblib import Parallel,delayed
 
-from tinyrag.searcher.bm25_recall.rank_bm25 import OkapiBM25
+from tools.searcher.bm25_recall.rank_bm25 import OkapiBM25
 
 
 class BM25Retriever:

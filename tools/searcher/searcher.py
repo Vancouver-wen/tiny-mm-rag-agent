@@ -9,10 +9,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
-from tinyrag.embedding.hf_emb import HFSTEmbedding
-from tinyrag.searcher.bm25_recall.bm25_retriever import BM25Retriever
-from tinyrag.searcher.emb_recall.emb_retriever import EmbRetriever
-from tinyrag.searcher.reranker.reanker_bge_m3 import RerankerBGEM3
+from tools.embedding.hf_emb import HFSTEmbedding
+from tools.searcher.bm25_recall.bm25_retriever import BM25Retriever
+from tools.searcher.emb_recall.emb_retriever import EmbRetriever
+from tools.searcher.reranker.reanker_bge_m3 import RerankerBGEM3
 
 def process_text(doc, emb_model, emb_retriever):
     doc_emb = emb_model.get_embedding(doc)

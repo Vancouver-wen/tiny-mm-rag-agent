@@ -2,7 +2,7 @@ import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from typing import List, Tuple
 
-from tinyrag.searcher.reranker.reranker_base import RankerBase
+from tools.searcher.reranker.reranker_base import RankerBase
 
 class RerankerBGEM3(RankerBase):
     def __init__(self, model_id_key: str, device: str = "", is_api=False) -> None:
