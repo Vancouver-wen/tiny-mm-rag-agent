@@ -3,67 +3,56 @@ import json
 import copy
 from loguru import logger
 from tqdm import tqdm
-from typing import Dict, List, Optional, Tuple, Union
 import jieba
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
-from tools.searcher.retriever_bm25 import BM25Retriever
-from tools.searcher.retriever_embed import EmbRetriever
-from tools.searcher.reanker import RerankerBGEM3
+from tools.searcher.retriever_bm25 import BowRetrieverBM25
+from tools.searcher.retriever_embed import EmbEncoderGme,EmbRetrieverFaiss
+from tools.searcher.reanker import RerankerJina
 
-def process_text(doc, emb_model, emb_retriever):
-    doc_emb = emb_model.get_embedding(doc)
-    emb_retriever.insert(doc_emb, doc)
 
 class Searcher:
-    def __init__(self, emb_model_id: str, ranker_model_id: str, device:str="cpu", base_dir: str="data/db") -> None:
+    def __init__(
+        self, 
+        base_dir: str, # 保存召回索引的目录 ="data/db"
+        embedding_model:str,
+        reranker_model:str,
+    ) -> None:
         self.base_dir = base_dir
-        emb_model_id = emb_model_id
-        ranker_model_id = ranker_model_id
-        device = device
         
         if not os.path.exists(self.base_dir):
             os.mkdir(self.base_dir)
         
         # 召回
         # bm25召回
-        self.bm25_retriever = BM25Retriever(base_dir=self.base_dir+"/bm_corpus")
+        self.bm25_retriever = BowRetrieverBM25(base_dir=self.base_dir+"/bm_corpus")
         # 向量召回
-        self.emb_model = HFSTEmbedding(path = emb_model_id,device=device)
-        index_dim = len(self.emb_model.get_embedding("test_dim"))
-        self.emb_retriever = EmbRetriever(index_dim=index_dim, base_dir=self.base_dir+"/faiss_idx")
+        self.emb_model = EmbEncoderGme(embedding_model)
+        index_dim = self.emb_model.hidden_size
+        self.emb_retriever = EmbRetrieverFaiss(index_dim=index_dim, base_dir=self.base_dir+"/faiss_idx")
 
         # 排序
-        self.ranker = RerankerBGEM3(model_id_key = ranker_model_id, device=device)
+        self.ranker = RerankerJina(reranker_model)
 
 
-    def build_db(self, docs: List[str]):
+    def build_db(self, chunks: list[list[dict]]):
         # 构建 BM25 索引
-        self.bm25_retriever.build(docs)
-        logger.info("bm25 retriever build success...")
+        self.bm25_retriever.build(chunks)
         # 构建 向量索引
-        doc_embs=self.emb_model.get_batch_embedding(docs)
-        self.emb_retriever.batch_insert(doc_embs,docs)
-        # for doc in tqdm(docs, desc="emb build "):
-        #     doc_emb = self.emb_model.get_embedding(doc)
-        #     self.emb_retriever.insert(doc_emb, doc)
-        logger.info("emb retriever build success...")
+        logger.info("emb retriever building. it may take a long time ...")
+        for chunk in tqdm(chunks):
+            doc_emb=self.emb_model.encode(chunk)
+            self.emb_retriever.insert(doc_emb,chunk)
         
     def save_db(self):
-        # self.base_dir = base_dir
         self.bm25_retriever.save()
-        logger.info("bm25 retriever save success...")
         self.emb_retriever.save()
-        logger.info("emb retriever save success...")
 
     def load_db(self):
-        # self.base_dir = base_dir
         self.bm25_retriever.load()
-        logger.info("bm25 retriever load success...")
         self.emb_retriever.load()
-        logger.info("emb retriever load success...")
 
     def search(self, query:str, top_n=3) -> list:
         # bm25召回 结果

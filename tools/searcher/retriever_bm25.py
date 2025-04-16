@@ -158,22 +158,29 @@ class OkapiBM25(BM25):
                                                (q_freq + self.k1 * (1 - self.b + self.b * doc_len / self.avgdl)))
         return score.tolist()
 
-class BM25Retriever:
-    def __init__(self, txt_list: List[str]=[], base_dir="data/db/bm_corpus") -> None:
-        self.data_list = txt_list
+class BowRetrieverBM25:
+    def __init__(self, base_dir="data/db/bm_corpus") -> None:
+        self.data_list=None
+        self.chunks=None
         self.base_dir = base_dir
-        
         if not os.path.exists(self.base_dir):
             os.makedirs(self.base_dir, exist_ok=True)
+    
+    def chunk2doc(self,chunk:list[dict])->str:
+        text=""
+        for item in chunk:
+            if item['type']=='text':
+                text=text+item['text']
+        return text
         
-    def build(self, docs: List[str]):
+    def build(self, chunks:list[list[dict]]):
+        self.chunks=chunks
+        docs=[self.chunk2doc(chunk) for chunk in chunks]
         self.data_list = docs
         self.tokenized_corpus = Parallel(n_jobs=-1,backend="threading")(
             delayed(self.tokenize)(doc)
             for doc in tqdm(docs)
         )
-        # for doc in tqdm(self.data_list, desc="bm25 build "):
-        #     self.tokenized_corpus.append(self.tokenize(doc))
         # 初始化 BM25Okapi 实例
         self.bm25 = OkapiBM25(self.tokenized_corpus)
 
@@ -192,6 +199,7 @@ class BM25Retriever:
         db_file_path = os.path.join(self.base_dir, db_name + ".json")
         # 保存分词结果
         data_to_save = {
+            "chunks":self.chunks,
             "data_list": self.data_list,
             "tokenized_corpus": self.tokenized_corpus
         }
@@ -209,13 +217,14 @@ class BM25Retriever:
         with open(db_file_path, 'r',encoding="UTF-8") as f:
             data = json.load(f)
         
+        self.chunks = data["chunks"]
         self.data_list = data["data_list"]
         self.tokenized_corpus = data["tokenized_corpus"]
         
         # 重新初始化 BM25Okapi 实例
         self.bm25 = OkapiBM25(self.tokenized_corpus)
     
-    def search(self, query: str, top_n=5) -> List[Tuple[int, str, float]]:
+    def search(self, query: str, top_n=5) -> List[Tuple[int,float,str,list[dict]]]:
         """ 
         使用BM25算法检索最相似的文本。
         """
@@ -230,7 +239,7 @@ class BM25Retriever:
 
         # 构建并返回结果列表
         result = [
-            (i, self.data_list[i], scores[i])
+            (i,scores[i],self.data_list[i],self.chunks[i])
             for i in top_n_indices
         ]
 
