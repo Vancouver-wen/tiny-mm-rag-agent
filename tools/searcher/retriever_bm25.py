@@ -224,22 +224,24 @@ class BowRetrieverBM25:
         # 重新初始化 BM25Okapi 实例
         self.bm25 = OkapiBM25(self.tokenized_corpus)
     
-    def search(self, query: str, top_n=5) -> List[Tuple[int,float,str,list[dict]]]:
+    def search(self, chunk:list[dict], top_n=5) -> List[Tuple[int,float,list[dict]]]:
         """ 
         使用BM25算法检索最相似的文本。
         """
         if self.tokenized_corpus is None:
             raise ValueError("Tokenized corpus is not loaded or generated.")
 
+        query = self.chunk2doc(chunk)
         tokenized_query = self.tokenize(query)
         scores = self.bm25.get_scores(tokenized_query)
 
         # 获取分数最高的前 N 个文本的索引
         top_n_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_n]
+        # self.data_list[i] 与 self.chunks[i] 的文字内容应该相同
 
         # 构建并返回结果列表
         result = [
-            (i,scores[i],self.data_list[i],self.chunks[i])
+            (i,scores[i],self.chunks[i])
             for i in top_n_indices
         ]
 

@@ -2,6 +2,7 @@ import os
 from typing import List, Tuple
 
 import torch
+import numpy as np
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from transformers import AutoModel
 
@@ -38,15 +39,15 @@ class RerankerBGEM3:
 
 
 class RerankerJina:
-    def __init__(self,model_path:str):
+    def __init__(self,model_path:str,device:str):
         self.model = AutoModel.from_pretrained(
             pretrained_model_name_or_path=model_path,
             torch_dtype="auto",
             trust_remote_code=True,
-            attn_implementation="flash_attention_2"
+            # attn_implementation="flash_attention_2"
         )
 
-        self.model.to('cuda')  # or 'cpu' if no GPU is available
+        self.model.to(device)  # or 'cpu' if no GPU is available
         self.model.eval()
 
     def rank(self,query:str,candidates:list[dict]):
@@ -60,25 +61,30 @@ class RerankerJina:
             {"type":"image","image":"image path/url"},
         ]
         """
-        text=""
-        images=[]
-        for item in candidates:
-            if item['type']=='text':
-                text=text+item['text']
-            elif item['type']=='image':
-                images.append(item['image'])
+        scores=[]
+        for chunk in candidates:
+            text=""
+            images=[]
+            for item in chunk:
+                if item['type']=='text':
+                    text=text+item['text']
+                elif item['type']=='image':
+                    images.append(item['image'])
+                else:
+                    raise NotImplementedError()
+            text_score=self.model.compute_score([[query,text]],max_length=2048, doc_type="text")
+            if images:
+                image_score=self.model.compute_score(
+                    [[query,image] for image in images],
+                    max_length=2048, doc_type="image"
+                ) # .mean()
+                if len(images)>1:
+                    image_score=float(np.mean(image_score))
+                score=(text_score+image_score)/2
             else:
-                raise NotImplementedError()
-        text_score=self.model.compute_score([[query,text]],max_length=2048, doc_type="text")
-        if images:
-            image_score=self.model.compute_score(
-                [[query,image] for image in images],
-                max_length=2048, doc_type="image"
-            ).mean()
-            score=(text_score+image_score)/2
-        else:
-            score=text_score
-        return score
+                score=text_score
+            scores.append(score)
+        return scores
     
     def example(self):
         # text 2 image

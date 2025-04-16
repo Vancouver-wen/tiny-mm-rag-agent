@@ -1,12 +1,12 @@
 import os
-os.environ["TOKENIZERS_PARALLELISM"] = "false" # Disabling parallelism to avoid deadlocks...
 import json
 
 import faiss
 import numpy as np
 import torch
+import jsonlines
 
-from gme_inference import GmeQwen2VL
+from .gme_inference import GmeQwen2VL
 
 class EmbIndex:
     def __init__(self, index_dim: int) -> None:
@@ -44,10 +44,18 @@ class EmbIndex:
         faiss.write_index(self.index, path)
 
     def search(self, vec: list, num: int):
+        """
+        return scores,indexs
+        检索距离矩阵D 维度为[nq查询向量样本数,k相似向量数]。其中列表示与k个相似向量的距离 距离从近到远排序。
+        检索结果距离I 维度为[nq查询向量样本数,k相似向量数]。其中列表示索引库中k个相似向量的id号 相似度从高到低排序
+        """
         vec = np.array(vec, dtype=np.float32)  # 转换为 NumPy 数组
         if vec.ndim == 1:
             vec = np.expand_dims(vec, axis=0)  # 转换为 (1, d) 形状
-        return self.index.search(vec, num)
+        D,I=self.index.search(vec, num)
+        D=np.squeeze(D)
+        I=np.squeeze(I)
+        return D.tolist(),I.tolist()
 
 class EmbRetrieverFaiss:
     def __init__(self, index_dim: int, base_dir="data/db/faiss_idx") -> None:
@@ -58,39 +66,42 @@ class EmbRetrieverFaiss:
         if not os.path.exists(self.base_dir):
             os.makedirs(self.base_dir, exist_ok=True)
 
-    def insert(self, emb: list, doc: str):
+    def insert(self, emb: list, chunk: list[dict]):
         self.invert_index.insert(emb)
-        self.forward_index.append(doc)
+        self.forward_index.append(chunk)
 
-    def save(self, index_name=""):
-        self.index_name = index_name if index_name  else "index_" + str(self.index_dim)
+    def save(self):
+        self.index_name = "index_" + str(self.index_dim)
         self.index_folder_path = os.path.join(self.base_dir, self.index_name)
         if not os.path.exists(self.index_folder_path):
             os.makedirs(self.index_folder_path, exist_ok=True)
 
-        with open(self.index_folder_path + "/forward_index.txt", "w", encoding="utf8") as f:
-            for data in self.forward_index:
-                f.write("{}\n".format(json.dumps(data, ensure_ascii=False)))
-
+        # 保存 faiss 与 index对应的chunk
         self.invert_index.save(self.index_folder_path + "/invert_index.faiss")
+        with jsonlines.open(self.index_folder_path + "/forward_index.json", "w") as writer:
+            for chunk in self.forward_index:
+                writer.write(chunk)
     
-    def load(self, index_name=""):
-        self.index_name = index_name if index_name != "" else "index_" + str(self.index_dim)
+    def load(self):
+        self.index_name = "index_" + str(self.index_dim)
         self.index_folder_path = os.path.join(self.base_dir, self.index_name)
 
         self.invert_index = EmbIndex(self.index_dim)
         self.invert_index.load(self.index_folder_path + "/invert_index.faiss")
 
         self.forward_index = []
-        with open(self.index_folder_path + "/forward_index.txt", encoding="utf8") as f:
-            for line in f:
-                self.forward_index.append(json.loads(line.strip()))
+        with jsonlines.open(self.index_folder_path + "/forward_index.json",'r') as reader:
+            for chunk in reader:
+                self.forward_index.append(chunk)
 
-    def search(self, embs: list, top_n=5):
-        search_res = self.invert_index.search(embs, top_n)
+    def search(self, embs: list, top_n=5)->list[tuple[int,float,list[dict]]]:
+        """
+        return list of [index,score,chunk]
+        """
+        scores,indexs = self.invert_index.search(embs, top_n)
         recall_list = []
-        for idx in range(top_n):
-            recall_list.append((search_res[1][0][idx], self.forward_index[search_res[1][0][idx]], search_res[0][0][idx]))
+        for i in range(top_n):
+            recall_list.append((indexs[i],scores[i], self.forward_index[indexs[i]]))
         return recall_list
 
 
@@ -99,8 +110,13 @@ class EmbRetrieverFaiss:
 
 
 class EmbEncoderGme:
-    def __init__(self,model_path:str):
-        self.gme = GmeQwen2VL(model_path)
+    def __init__(self,model_path:str,device:str):
+        self.gme = GmeQwen2VL(
+            model_path,
+            device=device,
+            min_image_tokens=128,
+            max_image_tokens=256
+        )
         self.hidden_size=self.gme.base.config.hidden_size
     
     def encode(self,chunk:list[dict])->torch.Tensor:
