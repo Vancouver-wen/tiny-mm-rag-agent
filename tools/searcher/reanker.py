@@ -23,7 +23,7 @@ class RerankerBGEM3:
 
         # 计算得分
         with torch.no_grad():  # 不计算梯度以节省内存
-            inputs = self.tokenizer(pairs, padding=True, truncation=True, return_tensors='pt', max_length=512).to(self.device)
+            inputs = self.tokenizer(pairs, padding=True, truncation=True, return_tensors='pt', max_length=1024).to(self.device)
             outputs = self.model(**inputs, return_dict=True)
             # outputs.squeeze 就是模型的结果 也就是相关性分数
             scores = outputs.logits.squeeze().cpu().numpy()
@@ -49,6 +49,7 @@ class RerankerJina:
 
         self.model.to(device)  # or 'cpu' if no GPU is available
         self.model.eval()
+        self.example()
 
     def rank(self,query:str,candidates:list[dict]):
         """
@@ -90,10 +91,8 @@ class RerankerJina:
         # text 2 image
         query = "slm markdown"
         documents = [
-            "https://raw.githubusercontent.com/jina-ai/multimodal-reranker-test/main/handelsblatt-preview.png",
-            "https://raw.githubusercontent.com/jina-ai/multimodal-reranker-test/main/paper-11.png",
-            "https://raw.githubusercontent.com/jina-ai/multimodal-reranker-test/main/wired-preview.png",
-            "https://jina.ai/blog-banner/using-deepseek-r1-reasoning-model-in-deepsearch.webp"
+            "/data/wzh_fd/workspace/tiny-mm-rag-agent/data/tmp_dfcf/2024_Tesla_Cybertruck_Foundation_Series,_front_left_(Greenwich).jpg",
+            "/data/wzh_fd/workspace/tiny-mm-rag-agent/data/tmp_dfcf/Tesla_Cybertruck_damaged_window.jpg",
         ]
         image_pairs = [[query, doc] for doc in documents]
         scores = self.model.compute_score(image_pairs, max_length=2048, doc_type="image")
@@ -111,7 +110,7 @@ class RerankerJina:
         scores = self.model.compute_score(text_pairs, max_length=1024, doc_type="text")
         
         # image 2 text
-        query = "https://raw.githubusercontent.com/jina-ai/multimodal-reranker-test/main/paper-11.png"
+        query = "/data/wzh_fd/workspace/tiny-mm-rag-agent/data/tmp_dfcf/paper-11.png"
         documents = [
             "We present ReaderLM-v2, a compact 1.5 billion parameter language model designed for efficient web content extraction. Our model processes documents up to 512K tokens, transforming messy HTML into clean Markdown or JSON formats with high accuracy -- making it an ideal tool for grounding large language models. The models effectiveness results from two key innovations: (1) a three-stage data synthesis pipeline that generates high quality, diverse training data by iteratively drafting, refining, and critiquing web content extraction; and (2) a unified training framework combining continuous pre-training with multi-objective optimization. Intensive evaluation demonstrates that ReaderLM-v2 outperforms GPT-4o-2024-08-06 and other larger models by 15-20% on carefully curated benchmarks, particularly excelling at documents exceeding 100K tokens, while maintaining significantly lower computational requirements.",
             "数据提取么？为什么不用正则啊，你用正则不就全解决了么？",
@@ -122,12 +121,11 @@ class RerankerJina:
         scores = self.model.compute_score(image_pairs, max_length=2048, query_type="image", doc_type="text")  
         
         # image 2 image
-        query = "https://raw.githubusercontent.com/jina-ai/multimodal-reranker-test/main/paper-11.png"
+        query = "/data/wzh_fd/workspace/tiny-mm-rag-agent/data/tmp_dfcf/paper-11.png"
         documents = [
-            "https://raw.githubusercontent.com/jina-ai/multimodal-reranker-test/main/handelsblatt-preview.png",
-            "https://raw.githubusercontent.com/jina-ai/multimodal-reranker-test/main/paper-11.png",
-            "https://raw.githubusercontent.com/jina-ai/multimodal-reranker-test/main/wired-preview.png",
-            "https://jina.ai/blog-banner/using-deepseek-r1-reasoning-model-in-deepsearch.webp"
+            "/data/wzh_fd/workspace/tiny-mm-rag-agent/data/tmp_dfcf/Tesla_Cybertruck_damaged_window.jpg",
+            "/data/wzh_fd/workspace/tiny-mm-rag-agent/data/tmp_dfcf/paper-11.png",
+            "/data/wzh_fd/workspace/tiny-mm-rag-agent/data/tmp_dfcf/2024_Tesla_Cybertruck_Foundation_Series,_front_left_(Greenwich).jpg",
         ]
         image_pairs = [[query, doc] for doc in documents]
         scores = self.model.compute_score(image_pairs, max_length=2048, doc_type="image", query_type='image')

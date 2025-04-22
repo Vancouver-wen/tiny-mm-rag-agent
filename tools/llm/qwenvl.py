@@ -11,7 +11,7 @@ class QwenVL:
         self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             pretrained_model_name_or_path=model_path, 
             torch_dtype="auto", 
-            device_map=device
+            device_map=device,
         )
 
         # We recommend enabling flash_attention_2 for better acceleration and memory saving, especially in multi-image and video scenarios.
@@ -26,7 +26,7 @@ class QwenVL:
         self.processor = AutoProcessor.from_pretrained(
             pretrained_model_name_or_path=model_path, 
             min_pixels=min_pixels, 
-            max_pixels=max_pixels
+            max_pixels=max_pixels,
         )
 
         # The default range for the number of visual tokens per image in the model is 4-16384.
@@ -34,22 +34,9 @@ class QwenVL:
         # min_pixels = 256*28*28
         # max_pixels = 1280*28*28
         # processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct", min_pixels=min_pixels, max_pixels=max_pixels)
+        self.example()
 
     def generate(self,messages:list[dict],max_new_tokens=2048)->str:
-        """
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "image": "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg",
-                    },
-                    {"type": "text", "text": "Describe this image."},
-                ],
-            }
-        ]
-        """
         # Preparation for inference
         text = self.processor.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
@@ -75,4 +62,14 @@ class QwenVL:
         response = output_text[0]
         return response
 
-    
+    def example(self,):
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "Describe this image."},
+                    {"type": "image", "image": "/data/wzh_fd/workspace/tiny-mm-rag-agent/data/tmp_dfcf/Tesla_Cybertruck_damaged_window.jpg"}
+                ],
+            }
+        ]
+        self.generate(messages)

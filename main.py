@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES']='2,3'
+os.environ['CUDA_VISIBLE_DEVICES']='0,1,2,3'
 os.environ["TOKENIZERS_PARALLELISM"] = "false" # Disabling parallelism to avoid deadlocks...
 import argparse
 import json
@@ -22,11 +22,12 @@ class TinyRAG:
             base_dir=os.path.dirname(self.config.chunk_file),
             embedding_model=self.config.embedding_model,
             reranker_model=self.config.reranker_model,
-            device="cuda:1"
+            device_retriever="cuda:0",
+            device_reranker="cuda:0"
         )
         self.llm = QwenVL(
             model_path=self.config.llm_model,
-            device="cuda:0"
+            device="balanced_low_0"
         )
 
     def build(self, chunks:list[dict]):
@@ -51,6 +52,7 @@ class TinyRAG:
             }
         ]
         # LLM的初次回答
+        logger.info(f"query 改写 ..")
         response = self.llm.generate(messages)
         messages.append({
             'role':'assistent',
@@ -59,7 +61,7 @@ class TinyRAG:
         # 数据库检索的文本
         ## 拼接 query和LLM初次生成的结果，查找向量数据库
         chunk=messages[0]['content']+messages[1]['content']
-        search_content_list = self.searcher.search(chunk, top_n=6) # list of (score,chunk)
+        search_content_list = self.searcher.search(chunk, top_n=self.config.top_n) # list of (score,chunk)
         # 构造 输入
         messages.append({
             'role':"user",
@@ -77,11 +79,17 @@ class TinyRAG:
 """
         })
         # 生成最终答案
-        response = self.llm.generate(messages)
-        messages.append({
-            'role':'assistent',
-            'content':[{'type':'text','text':response}]
-        })
+        logger.info(f"query 增强推理 ...")
+        try:
+            response = self.llm.generate(messages)
+            messages.append({
+                'role':'assistent',
+                'content':[{'type':'text','text':response}]
+            })
+            logger.info(f"messages have been saved ..")
+        except Exception as e:
+            logger.info(f"enter error : {e}")
+
         return messages
 
 

@@ -1,3 +1,4 @@
+top_n: 6
 
 chunk_file: /data/wzh_fd/workspace/tiny-mm-rag-agent/data/tmp_dfcf/chunks.json
 

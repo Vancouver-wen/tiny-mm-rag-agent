@@ -24,12 +24,13 @@ class GmeQwen2VL:
         **kwargs,
     ) -> None:
         model_name = model_path or model_name
+        self.normalize = True
+        self.device = device
         self.base = AutoModelForVision2Seq.from_pretrained(
             model_name, torch_dtype=torch.float16, **kwargs
         )
+        self.base.to(self.device)
         self.base.eval()
-        self.normalize = True
-        self.device = device
         min_pixels = min_image_tokens * 28 * 28
         max_pixels = max_image_tokens * 28 * 28
         self.max_length = max_length
@@ -92,7 +93,7 @@ class GmeQwen2VL:
         return embeddings.contiguous()
 
     def embed(self, texts: list[str], images: list[Image.Image], is_query=True, instruction=None, **kwargs):
-        self.base.to(self.device)
+        # self.base.to(self.device)
         # Inputs must be batched
         input_texts, input_images = list(), list()
         for t, i in zip(texts, images):

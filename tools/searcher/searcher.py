@@ -21,7 +21,8 @@ class Searcher:
         base_dir: str, # 保存召回索引的目录 ="data/db"
         embedding_model:str,
         reranker_model:str,
-        device:str
+        device_retriever:str,
+        device_reranker:str
     ) -> None:
         self.base_dir = base_dir
         
@@ -32,12 +33,12 @@ class Searcher:
         # bm25召回
         self.bm25_retriever = BowRetrieverBM25(base_dir=self.base_dir+"/bm_corpus")
         # 向量召回
-        self.emb_model = EmbEncoderGme(embedding_model,device=device)
+        self.emb_model = EmbEncoderGme(embedding_model,device=device_retriever)
         index_dim = self.emb_model.hidden_size
         self.emb_retriever = EmbRetrieverFaiss(index_dim=index_dim, base_dir=self.base_dir+"/faiss_idx")
 
         # 排序
-        self.ranker = RerankerJina(reranker_model,device=device)
+        self.ranker = RerankerJina(reranker_model,device=device_reranker)
 
 
     def build_db(self, chunks: list[list[dict]]):
@@ -59,6 +60,7 @@ class Searcher:
         self.emb_retriever.load()
 
     def search(self, chunk:list[dict], top_n=3, query="") -> list:
+        logger.info(f"query 检索 ..")
         # bm25召回 结果
         bm25_recall_list = self.bm25_retriever.search(chunk, 2 * top_n)
         # for text in bm25_recall_list:
@@ -77,6 +79,7 @@ class Searcher:
                 recall_unique_index.add(idx)
                 recall_unique_chunk.append(chunk)
 
+        logger.info(f"query 重排 ..")
         # 调用 排序模型 对 召回结果 进行排序
         if not query:
             for item in chunk:
