@@ -21,6 +21,8 @@ joblib
 modelscope
 jsonlines
 PyYaml
+memobase
+rich
 
 # https://download.pytorch.org/whl/cu113/torch-1.12.1%2Bcu113-cp39-cp39-linux_x86_64.whl
 # -i https://pypi.tuna.tsinghua.edu.cn/simple

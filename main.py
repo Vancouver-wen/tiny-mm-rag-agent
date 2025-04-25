@@ -13,6 +13,7 @@ from tqdm import tqdm
 from joblib import Parallel,delayed
 from tools.llm.qwenvl import QwenVL
 from tools.searcher.searcher import Searcher
+from tools.memory.memo import MemoBase
 
 class TinyRAG:
     def __init__(self, config) -> None:
@@ -28,6 +29,10 @@ class TinyRAG:
         self.llm = QwenVL(
             model_path=self.config.llm_model,
             device="balanced_low_0"
+        )
+        self.memobase = MemoBase(
+            token=self.config.memobase_token,
+            user_id=self.config.memobase_uid
         )
 
     def build(self, chunks:list[dict]):
@@ -47,7 +52,7 @@ class TinyRAG:
                 "role": "user",
                 "content": [
                     # {"type": "image","image": "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg",},
-                    {"type": "text", "text": "今天是2025年5月1日, 我想知道今天的汽车行业投资建议。"},
+                    {"type": "text", "text": "请你给出新能源汽车行业投资建议。"},
                 ],
             }
         ]
@@ -111,7 +116,7 @@ def main(args):
     
     # 这里可以测试 llm 的任务拆解能力，以及多步执行能力
     messages=tiny_rag.chat() 
-    with open("./temp.json",'w',encoding="UTF-8") as f:
+    with open("./log.json",'w',encoding="UTF-8") as f:
         json.dump(messages,f,ensure_ascii=False,indent=4)
 
 if __name__ == "__main__":

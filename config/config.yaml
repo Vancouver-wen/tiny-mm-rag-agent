@@ -1,4 +1,4 @@
-top_n: 6
+top_n: 5
 
 chunk_file: /data/wzh_fd/workspace/tiny-mm-rag-agent/data/tmp_dfcf/chunks.json
 
@@ -6,3 +6,6 @@ embedding_model: /data/wzh_fd/workspace/Models/gme-Qwen2-VL-2B-Instruct
 reranker_model: /data/wzh_fd/workspace/Models/jina-reranker-m0
 
 llm_model: /data/wzh_fd/workspace/Models/Qwen2.5-VL-7B-Instruct
+
+memobase_token: sk-proj-452c85c63e7d084e-bece38f45473a20d1c57da3ea20ba479
+memobase_uid: 0750ee40-9eec-4514-9498-d3b14b0ed66c

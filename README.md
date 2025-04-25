@@ -44,3 +44,26 @@ context 1
 context 2
 ![](image path/url 2)
 ```
+
+### 运行
+修改config/config.yaml中的 chunk_file 路径
+```bash
+python main.py --build # 构建向量数据库
+python main.py # RAG
+```
+
+### TODO
+1. 使用[sql-lite](https://www.runoob.com/sqlite/sqlite-python.html)构建 用户行为序列数据库 用户的姓名，邮箱，历史投资信息
+2. 使用[memobase](https://github.com/memodb-io/memobase)根据历史聊天记录构建agent
+3. 使用[mcp](https://modelcontextprotocol.io/quickstart/client)来构建agent，初步实现agentic rag与send email功能
+4. 借鉴[deep research]()构建真正的agentic rag
+5. 接入知识图谱，实现词频+向量+图谱三种形式的异构召回
+
+
+### 参考资料
+1. mcp理解：https://www.bilibili.com/video/BV1Y854zmEg9
+2. cline提示词抓取：https://www.youtube.com/watch?v=wiLQgCDzp44
+3. mcp服务器：https://modelcontextprotocol.io/quickstart/server
+4. mcp客户端：https://modelcontextprotocol.io/quickstart/client
+5. 推荐系统在金融领域的应用： https://zhuanlan.zhihu.com/p/718465775
+
