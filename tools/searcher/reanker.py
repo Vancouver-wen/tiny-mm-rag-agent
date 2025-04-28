@@ -1,5 +1,6 @@
 import os
-from typing import List, Tuple
+import json
+import requests
 
 import torch
 import numpy as np
@@ -17,7 +18,7 @@ class RerankerBGEM3:
         self.model.to(self.device)  # 将模型移动到指定设备
         self.model.eval()  # 设置模型为评估模式
 
-    def rank(self, query: str, candidate_query, top_n=3) -> List[Tuple[float, str]]:
+    def rank(self, query: str, candidate_query, top_n=3) -> list[tuple[float, str]]:
         # 创建查询和文本对
         pairs = [[query, txt] for txt in candidate_query]
 
@@ -129,3 +130,29 @@ class RerankerJina:
         ]
         image_pairs = [[query, doc] for doc in documents]
         scores = self.model.compute_score(image_pairs, max_length=2048, doc_type="image", query_type='image')
+        
+
+class RemoteRerankerJina:
+    def __init__(self,url:str):
+        self.url=url
+        
+    def rank(self,query:str,candidates:list[dict]):
+        input_data = {
+            "data": [query,candidates]
+        }
+        scores = json.loads(requests.post(self.url, json=input_data).json())
+        return scores
+    
+    def example(self):
+        query = "/data/wzh_fd/workspace/tiny-mm-rag-agent/data/tmp_dfcf/paper-11.png"
+        chunks = [
+            [{'type':'text','text':"We present ReaderLM-v2, a compact 1.5 billion parameter language model designed for efficient web content extraction. Our model processes documents up to 512K tokens, transforming messy HTML into clean Markdown or JSON formats with high accuracy -- making it an ideal tool for grounding large language models. The models effectiveness results from two key innovations: (1) a three-stage data synthesis pipeline that generates high quality, diverse training data by iteratively drafting, refining, and critiquing web content extraction; and (2) a unified training framework combining continuous pre-training with multi-objective optimization. Intensive evaluation demonstrates that ReaderLM-v2 outperforms GPT-4o-2024-08-06 and other larger models by 15-20% on carefully curated benchmarks, particularly excelling at documents exceeding 100K tokens, while maintaining significantly lower computational requirements."}],
+            [{'type':'text','text':"数据提取么？为什么不用正则啊，你用正则不就全解决了么？"}],
+            [{'type':'text','text':"During the California Gold Rush, some merchants made more money selling supplies to miners than the miners made finding gold."}],
+            [{'type':'text','text':"Die wichtigsten Beiträge unserer Arbeit sind zweifach: Erstens führen wir eine neuartige dreistufige Datensynthese-Pipeline namens Draft-Refine-Critique ein, die durch iterative Verfeinerung hochwertige Trainingsdaten generiert; und zweitens schlagen wir eine umfassende Trainingsstrategie vor, die kontinuierliches Vortraining zur Längenerweiterung, überwachtes Feintuning mit spezialisierten Kontrollpunkten, direkte Präferenzoptimierung (DPO) und iteratives Self-Play-Tuning kombiniert. Um die weitere Forschung und Anwendung der strukturierten Inhaltsextraktion zu erleichtern, ist das Modell auf Hugging Face öffentlich verfügbar."}],
+        ]
+        input_data = {
+            "data": [query,chunks]
+        }
+        scores = json.loads(requests.post(self.url, json=input_data).json())
+        scores = np.array(scores,dtype=np.float32)

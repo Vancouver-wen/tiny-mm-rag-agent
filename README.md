@@ -66,4 +66,4 @@ python main.py # RAG
 3. mcp服务器：https://modelcontextprotocol.io/quickstart/server
 4. mcp客户端：https://modelcontextprotocol.io/quickstart/client
 5. 推荐系统在金融领域的应用： https://zhuanlan.zhihu.com/p/718465775
-
+6. 提示词编写: https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools

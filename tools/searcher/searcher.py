@@ -11,8 +11,8 @@ import numpy as np
 from natsort import natsorted
 
 from tools.searcher.retriever_bm25 import BowRetrieverBM25
-from tools.searcher.retriever_embed import EmbEncoderGme,EmbRetrieverFaiss
-from tools.searcher.reanker import RerankerJina
+from tools.searcher.retriever_embed import EmbEncoderGme,RemoteEmbEncoderGme,EmbRetrieverFaiss
+from tools.searcher.reanker import RerankerJina,RemoteRerankerJina
 
 
 class Searcher:
@@ -20,9 +20,13 @@ class Searcher:
         self, 
         base_dir: str, # 保存召回索引的目录 ="data/db"
         embedding_model:str,
+        embedding_dim:int,
         reranker_model:str,
         device_retriever:str,
-        device_reranker:str
+        device_reranker:str,
+        is_remote:bool=False,
+        remote_embedding_model:str="",
+        remote_reranker_model:str="",
     ) -> None:
         self.base_dir = base_dir
         
@@ -33,12 +37,19 @@ class Searcher:
         # bm25召回
         self.bm25_retriever = BowRetrieverBM25(base_dir=self.base_dir+"/bm_corpus")
         # 向量召回
-        self.emb_model = EmbEncoderGme(embedding_model,device=device_retriever)
-        index_dim = self.emb_model.hidden_size
+        index_dim=embedding_dim
+        if is_remote:
+            self.emb_model = RemoteEmbEncoderGme(remote_embedding_model)
+        else:
+            self.emb_model = EmbEncoderGme(embedding_model,device=device_retriever)
+            assert index_dim == self.emb_model.hidden_size
         self.emb_retriever = EmbRetrieverFaiss(index_dim=index_dim, base_dir=self.base_dir+"/faiss_idx")
 
         # 排序
-        self.ranker = RerankerJina(reranker_model,device=device_reranker)
+        if is_remote:
+            self.ranker = RemoteRerankerJina(remote_reranker_model)
+        else:
+            self.ranker = RerankerJina(reranker_model,device=device_reranker)
 
 
     def build_db(self, chunks: list[list[dict]]):
@@ -46,7 +57,6 @@ class Searcher:
         logger.info("emb retriever building. it may take a long time ...")
         for chunk in tqdm(chunks):
             embedding=self.emb_model.encode(chunk)
-            embedding=embedding.tolist()
             self.emb_retriever.insert(embedding,chunk)
         # 构建 BM25 索引
         self.bm25_retriever.build(chunks)

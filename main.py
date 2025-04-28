@@ -11,9 +11,9 @@ from easydict import EasyDict
 from loguru import logger
 from tqdm import tqdm
 from joblib import Parallel,delayed
-from tools.llm.qwenvl import QwenVL
+from tools.llm.qwenvl import QwenVL,RemoteQwenVL
 from tools.searcher.searcher import Searcher
-from tools.memory.memo import MemoBase
+from tools.agent.prompt import Prompt
 
 class TinyRAG:
     def __init__(self, config) -> None:
@@ -22,18 +22,22 @@ class TinyRAG:
         self.searcher = Searcher(
             base_dir=os.path.dirname(self.config.chunk_file),
             embedding_model=self.config.embedding_model,
+            embedding_dim=self.config.embedding_dim,
             reranker_model=self.config.reranker_model,
             device_retriever="cuda:0",
-            device_reranker="cuda:0"
+            device_reranker="cuda:0",
+            remote=self.config.remote,
+            remote_embedding_model=self.config.remote_embedding_model,
+            remote_reranker_model=self.config.remote_reranker_model,
         )
-        self.llm = QwenVL(
-            model_path=self.config.llm_model,
-            device="balanced_low_0"
-        )
-        self.memobase = MemoBase(
-            token=self.config.memobase_token,
-            user_id=self.config.memobase_uid
-        )
+        if self.config.remote:
+            self.llm=RemoteQwenVL(self.config.remote_llm_path)
+        else:
+            self.llm = QwenVL(
+                model_path=self.config.llm_model,
+                device="balanced_low_0"
+            )
+        self.prompt=Prompt(config)
 
     def build(self, chunks:list[dict]):
         """ 构建数据库可能需要很长时间"""
@@ -47,12 +51,20 @@ class TinyRAG:
         """
         一开始不要想着自动化，先手动控制流程
         """
+        prompt=self.prompt.get_prompt()
+        import pdb;pdb.set_trace()
         messages = [
+            {
+                "role":"system",
+                "content":[
+                    {"type":"text","text":prompt}
+                ]
+            },
             {
                 "role": "user",
                 "content": [
                     # {"type": "image","image": "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg",},
-                    {"type": "text", "text": "请你给出新能源汽车行业投资建议。"},
+                    {"type": "text", "text": "请你给出我一些投资建议。"},
                 ],
             }
         ]

@@ -1,4 +1,5 @@
 import os
+import requests
 
 import torch
 from transformers import AutoModel
@@ -73,3 +74,37 @@ class QwenVL:
             }
         ]
         self.generate(messages)
+        
+class RemoteQwenVL:
+    def __init__(self,url:str):
+        self.url=url
+        self.example()
+        
+    def generate(self,messages:list[dict])->str:
+        input_data = {
+            "data": messages
+        }
+        response = requests.post(self.url, json=input_data).json()
+        return response
+        
+    def example(self,):
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "Describe this image."},
+                    {"type": "image", "image": "/data/wzh_fd/workspace/tiny-mm-rag-agent/data/tmp_dfcf/Tesla_Cybertruck_damaged_window.jpg"}
+                ],
+            }
+        ]
+        # 将数据封装成符合服务器要求的格式
+        input_data = {
+            "data": messages
+        }
+
+        # 发送 POST 请求
+        response = requests.post(self.url, json=input_data)
+
+        # 打印返回的 JSON 数据
+        # print("Response from server:")
+        # print(response.json())

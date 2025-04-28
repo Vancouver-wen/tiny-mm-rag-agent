@@ -1,5 +1,6 @@
 import os
 import json
+import requests
 
 import faiss
 import numpy as np
@@ -120,7 +121,7 @@ class EmbEncoderGme:
         self.hidden_size=self.gme.base.config.hidden_size
         self.example()
     
-    def encode(self,chunk:list[dict])->torch.Tensor:
+    def encode(self,chunk:list[dict])->list:
         """
         chunk=[
             {"type":"text","text":"content"},
@@ -154,7 +155,7 @@ class EmbEncoderGme:
             embedding=torch.mean(torch.stack([text_embedding,image_embedding]),dim=0)
         else:
             embedding=text_embedding
-        return embedding
+        return embedding.tolist()
 
     def example(self):
         texts = [
@@ -183,6 +184,37 @@ class EmbEncoderGme:
         print((e_fused[0] * e_fused[1]).sum())
         ## tensor(0.6108, dtype=torch.float16)
         
+class RemoteEmbEncoderGme:
+    def __init__(self,url:str):
+        self.url=url
+        self.example()
+        
+    def encode(self,chunk:list[dict])->list:
+        input_data = {
+            "data": chunk
+        }
+        embedding=json.loads(requests.post(self.url, json=input_data).json())
+        return embedding
+
+    def example(self,):
+        chunk1=[
+            {'type':'text','text':'The Tesla Cybertruck is a battery electric pickup truck built by Tesla, Inc. since 2023.'}
+        ]
+        chunk2=[
+            {'type':'image','image':"/data/wzh_fd/workspace/tiny-mm-rag-agent/data/tmp_dfcf/2024_Tesla_Cybertruck_Foundation_Series,_front_left_(Greenwich).jpg"}
+        ]
+        input_data = {
+            "data": chunk1
+        }
+        embedding1 = json.loads(requests.post(self.url, json=input_data).json())
+        input_data = {
+            "data": chunk2
+        }
+        embedding2 = json.loads(requests.post(self.url, json=input_data).json())
+
+        embedding1 = np.array(embedding1,dtype=np.float32)
+        embedding2 = np.array(embedding2,dtype=np.float32)
+        score=embedding1@embedding2
         
 if __name__=="__main__":
     emb_emcoder=EmbEncoderGme("/data/wzh_fd/workspace/Models/gme-Qwen2-VL-2B-Instruct")

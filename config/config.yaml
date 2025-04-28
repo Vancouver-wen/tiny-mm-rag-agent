@@ -1,8 +1,15 @@
+remote: true
+remote_embedding_model: http://127.0.0.1:4514/embedding
+remote_reranker_model: http://127.0.0.1:4514/reranker
+remote_llm_path: http://127.0.0.1:4514/llm
+
 top_n: 5
 
 chunk_file: /data/wzh_fd/workspace/tiny-mm-rag-agent/data/tmp_dfcf/chunks.json
 
+embedding_dim: 1536
 embedding_model: /data/wzh_fd/workspace/Models/gme-Qwen2-VL-2B-Instruct
+
 reranker_model: /data/wzh_fd/workspace/Models/jina-reranker-m0
 
 llm_model: /data/wzh_fd/workspace/Models/Qwen2.5-VL-7B-Instruct
