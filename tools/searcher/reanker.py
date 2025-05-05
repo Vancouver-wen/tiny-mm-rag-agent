@@ -135,6 +135,7 @@ class RerankerJina:
 class RemoteRerankerJina:
     def __init__(self,url:str):
         self.url=url
+        self.example()
         
     def rank(self,query:str,candidates:list[dict]):
         input_data = {
