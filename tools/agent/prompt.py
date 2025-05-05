@@ -1,6 +1,7 @@
 import os
 import re
 from pprint import pprint
+import json
 
 from .memo import MemoBase
 
@@ -17,7 +18,9 @@ MEM_PROMPT="""
 User Profile Accessment
 
 Before starting the conversation, you have access to the user profile that is formatted using an XML-style memory tag. Here is the profile:
+<memory>
 {memory}
+</memory>
 """
 
 TOOL_PROMPT="""
@@ -194,6 +197,7 @@ The Model Context Protocol (MCP) enables communication between the system and lo
 
 When a server is connected, you can use the server's tools via the `use_mcp_tool` tool, and access the server's resources via the `access_mcp_resource` tool.
 
+{tools}
 """
 
 CONCLUSION_PROMPT="""
@@ -242,7 +246,7 @@ class Prompt:
             user_id=config.memobase_uid
         )
     
-    def get_prompt(self,):
+    def get_prompt(self,tools):
         try:
           mem=self.memo_base.get_memory()
         except: # 可能出现网络不好的情况
@@ -275,10 +279,31 @@ Please provide your answer using the information within the <memory> tag at the 
         system_prompt=SYSTEM_PROMPT        
         mem_prompt=MEM_PROMPT.format(memory=mem)
         tool_prompt=TOOL_PROMPT
-        mcp_prompt=MCP_PROMPT
+        mcp_prompt=MCP_PROMPT.format(tools=f"""
+## agentic rag mcp       
+                              
+### Available Tools
+
+{self.get_avail_tools(tools)}
+""")
         conclusion_prompt=CONCLUSION_PROMPT
         # import pdb;pdb.set_trace()
         prompt=system_prompt+mem_prompt+tool_prompt+mcp_prompt+conclusion_prompt
         return prompt
       
+    def get_avail_tools(self,tools):
+      template="""
+- {tool_name}: {description}
+    Input Schema:
+    {input_schema}
+"""
+      result=""
+      for tool in tools:
+        t=template.format(
+          tool_name= tool.name,
+          description= tool.description,
+          input_schema= json.dumps(tool.inputSchema,indent=4)
+        )
+        result+=t
+      return result
 

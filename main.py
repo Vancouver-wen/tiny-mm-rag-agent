@@ -3,6 +3,9 @@ os.environ['CUDA_VISIBLE_DEVICES']='0,1,2,3'
 os.environ["TOKENIZERS_PARALLELISM"] = "false" # Disabling parallelism to avoid deadlocks...
 import argparse
 import json
+import asyncio
+from pprint import pprint
+import re
 
 import torch
 import yaml
@@ -11,6 +14,9 @@ from easydict import EasyDict
 from loguru import logger
 from tqdm import tqdm
 from joblib import Parallel,delayed
+from fastmcp import Client
+from fastmcp.client import SSETransport
+
 from tools.llm.qwenvl import QwenVL,RemoteQwenVL
 from tools.searcher.searcher import Searcher
 from tools.agent.prompt import Prompt
@@ -132,11 +138,15 @@ class TinyAgenticRAG:
             )
         self.prompt=Prompt(self.config)
     
-    def chat(self) -> list:
+    async def chat(self) -> list:
         """
         一开始不要想着自动化，先手动控制流程
         """
-        prompt=self.prompt.get_prompt()
+        client = Client(SSETransport(url='http://localhost:9000/sse')) 
+        async with client:
+            assert client.is_connected()
+            tools = await client.list_tools()
+        prompt=self.prompt.get_prompt(tools)
         messages = [
             {
                 "role":"system",
@@ -148,54 +158,58 @@ class TinyAgenticRAG:
                 "role": "user",
                 "content": [
                     # {"type": "image","image": "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg",},
-                    {"type": "text", "text": "请你给出我一些投资建议。"},
+                    {"type": "text", "text": "请你给出我一些投资建议。\
+你要将我的问题当作query，使用rag mcp中的rewrite query来改写query，使用search query来逐一查询改写后的query来获取更多的相关信息。\
+最后综合利用所有的信息来回答原始的query。"},
                 ],
             }
         ]
-        # LLM的初次回答
-        logger.info(f"query 改写 ..")
-        response = self.llm.generate(messages)
-        import pdb;pdb.set_trace()
-        messages.append({
-            'role':'assistent',
-            'content':[{'type':'text','text':response}]
-        })
-        # 数据库检索的文本
-        ## 拼接 query和LLM初次生成的结果，查找向量数据库
-        chunk=messages[0]['content']+messages[1]['content']
-        search_content_list = self.searcher.search(chunk, top_n=self.config.top_n) # list of (score,chunk)
-        # 构造 输入
-        messages.append({
-            'role':"user",
-            'content':[{'type':'text','text':'--- \n参考信息: \n'}]
-        })
-        for score,chunk in search_content_list:
-            messages[-1]['content']=messages[-1]['content']+chunk
-        messages[-1]['content'].append({
-            'type':'text',
-            'text':"""
----
-请根据上述参考信息回答，修正之前的回答。
-前面的参考信息和回答可能有用，也可能没用，你需要从我给出的参考信息中选出与我的问题最相关的那些，来为你修正的回答提供依据。
-你修正的回答:
-"""
-        })
-        # 生成最终答案
-        logger.info(f"query 增强推理 ...")
-        try:
+        while True:
             response = self.llm.generate(messages)
             messages.append({
-                'role':'assistent',
+                'role':'assistant',
                 'content':[{'type':'text','text':response}]
             })
-            logger.info(f"messages have been saved ..")
-        except Exception as e:
-            logger.info(f"enter error : {e}")
-
+            print(response)
+            # 分析是否需要调用工具 
+            # 调用工具 / input
+            pattern = r"<use_mcp_tool>(.*?)</use_mcp_tool>"
+            pts = re.findall(pattern, response, re.DOTALL)
+            if pts: # 有工具调用
+                mcp_use=pts[0]
+                server_name=re.findall(r"<server_name>(.*?)</server_name>", mcp_use, re.DOTALL)[0]
+                tool_name=re.findall(r"<tool_name>(.*?)</tool_name>", mcp_use, re.DOTALL)[0]
+                arguments=re.findall(r"<arguments>(.*?)</arguments>", mcp_use, re.DOTALL)[0]
+                try:
+                    arguments=json.loads(arguments)
+                    async with client:
+                        assert client.is_connected()
+                        tool_response = await client.call_tool_mcp(name=tool_name,arguments=arguments)
+                        tool_response = tool_response.content[0].text
+                        tool_response = f"[use_mcp_tool for '{tool_name}' in '{server_name}'] Result: \n {tool_response}"
+                except:
+                    tool_response=f"mcp tool: {tool_name} call failed. \n"
+                messages.append({
+                    'role':'user',
+                    'content':[{'type':'text','text':tool_response}]
+                })
+                import pdb;pdb.set_trace()
+            else:
+                logger.info(f"请用户输入：")
+                user_input=input()
+                messages.append({
+                    'role':'user',
+                    'content':[{'type':'text','text':user_input}]
+                })
+                if user_input=='exit':
+                    break
+                import pdb;pdb.set_trace()
+            with open("./log.json",'w',encoding="UTF-8") as f:
+                json.dump(messages,f,ensure_ascii=False,indent=4)
         return messages
         
 
-def main(args):
+async def main(args):
     with open(args.config,'r', encoding='utf-8') as f:
         config=EasyDict(yaml.safe_load(f))
         
@@ -203,7 +217,7 @@ def main(args):
     tiny_rag = TinyAgenticRAG(config)
     
     # 这里可以测试 llm 的任务拆解能力，以及多步执行能力
-    messages=tiny_rag.chat() 
+    messages=await tiny_rag.chat() 
     with open("./log.json",'w',encoding="UTF-8") as f:
         json.dump(messages,f,ensure_ascii=False,indent=4)
 
@@ -214,5 +228,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     
-    main(args)
+    asyncio.run(main(args))
 

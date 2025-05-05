@@ -57,7 +57,7 @@ searcher = Searcher(
 searcher.load_db()
 
 @mcp.tool()
-def rewrite_query(query:str,information:str,num:int=3)->list[str]:
+def rewrite_query(query:str,information:str,num:int=2)->list[str]:
     """
     能够根据information来改写query。
     :param query: 用于在检索相关信息的query
@@ -88,15 +88,16 @@ def rewrite_query(query:str,information:str,num:int=3)->list[str]:
     return r
 
 @mcp.tool()
-def search_query(query:str,num=6)->list[dict]:
+def search_query(query:str,num:int=3)->list[dict]:
     """
     能够根据query在知识库中检索若干条相关的信息。
+    通常情况下，在使用该方法前需要先进行query改写，得到多个改写后的query。然后多次调用该方法来查询每一个改写后的query对应的相关信息。
     :param query: 用于检索的查询
     :param num: 检索到的相关信息的条数。尽量维持一个比较小的检索条数，否则会超过上下文最大长度限制
     :return: 一个列表包含若干检索到的相关信息，每个信息都是一个字典
     """
     chunk=[{'type':'text','text':query}]
-    chunks=searcher.search(chunk, top_n=config.top_n)
+    chunks=searcher.search(chunk, top_n=num)
     result=[]
     for score,cs in chunks:
         for c in cs:
