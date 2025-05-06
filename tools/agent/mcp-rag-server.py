@@ -15,7 +15,7 @@ from tools.searcher.searcher import Searcher
 # 初始化 MCP 服务器
 mcp = FastMCP("RagServer",host="127.0.0.1", port=9000)
 
-openai_api_base = "https://gateway.ai.cloudflare.com/v1/58f881713c426463bed06e68756a8097/test/deepseek"
+openai_api_base = "https://api.deepseek.com"
 openai_api_key = "sk-102b49bc5d0249ec8ba89d22c0818c8d"
 
 client = OpenAI(
@@ -61,17 +61,21 @@ def rewrite_query(query:str,information:str,num:int=2)->list[str]:
     """
     能够根据information来改写query。
     :param query: 用于在检索相关信息的query
-    :param information: 用于改写query的上下文信息，主要是用户画像、与query可能相关的历史聊天记录等
+    :param information: 用于改写query的上下文信息，主要是用户画像、与query可能相关的历史聊天记录等。
     :return: 一个包含若干改写后query的列表
     """
+    # information应该尽可能详细丰富，否则将无法有效改写query。为了改善用户体验，应当尽可能从memory tag、数据库与当前对话上下文中得到information，减少需要用户手动输入information的场景。
     response = client.chat.completions.create(
         model="deepseek-chat",
         messages=[
             {"role":"system","content":SYSTEM_PROMPT},
-            {"role": "user", "content": f"请你根据 **information** 的内容对 **query** 进行查询改写与查询拓展，并以json格式返回一个长度为{num}的列表。\
-             查询改写的应用方式是对原始Query拓展出与用户需求关联度高的改写词，多个改写词与用户搜索词一起做检索。\
-             查询改写主要用于解决一些语义鸿沟，比如语义拓展（同义词，下位词，大小写，繁简转换等）、场景拓展、口语与专业术语的Gap、意图识别等。\
-             \n**information**: {information} \n**query**: {query}"},
+            {"role": "user", "content": f"""请你根据 **information** 的内容对 **query** 进行查询改写与查询拓展，并以json格式返回一个长度为{num}的列表。
+查询改写的应用方式是对原始Query拓展出与用户需求关联度高的改写词，多个改写词与用户搜索词一起做检索。
+查询改写主要用于解决一些语义鸿沟，比如语义拓展（同义词，下位词，大小写，繁简转换等）、场景拓展、口语与专业术语的Gap、意图识别等。
+查询改写应该对**information**进行凝念概括与场景拓展，从而进行更好的挖掘用户**query**中的潜在语义。
+**information**: {information} 
+**query**: {query}
+"""},
         ],
         response_format={
             'type': 'json_object'
@@ -88,7 +92,7 @@ def rewrite_query(query:str,information:str,num:int=2)->list[str]:
     return r
 
 @mcp.tool()
-def search_query(query:str,num:int=3)->list[dict]:
+def search_query(query:str,num:int=2)->list[dict]:
     """
     能够根据query在知识库中检索若干条相关的信息。
     通常情况下，在使用该方法前需要先进行query改写，得到多个改写后的query。然后多次调用该方法来查询每一个改写后的query对应的相关信息。

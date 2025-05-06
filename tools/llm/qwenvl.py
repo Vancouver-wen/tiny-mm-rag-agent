@@ -5,15 +5,17 @@ import torch
 from transformers import AutoModel
 from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
 from qwen_vl_utils import process_vision_info
+from loguru import logger
 
 class QwenVL:
-    def __init__(self,model_path:str,device:str,min_pixels = 128*28*28,max_pixels = 256*28*28):
+    def __init__(self,model_path:str,device:str,min_pixels = 25*28*28,max_pixels = 100*28*28):
         # default: Load the model on the available device(s)
         self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             pretrained_model_name_or_path=model_path, 
             torch_dtype="auto", 
             device_map=device,
         )
+        self.model.eval()
 
         # We recommend enabling flash_attention_2 for better acceleration and memory saving, especially in multi-image and video scenarios.
         # model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
@@ -73,7 +75,7 @@ class QwenVL:
                 ],
             }
         ]
-        self.generate(messages)
+        logger.info(self.generate(messages))
         
 class RemoteQwenVL:
     def __init__(self,url:str):

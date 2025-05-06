@@ -136,17 +136,22 @@ class TinyAgenticRAG:
                 model_path=self.config.llm_model,
                 device="balanced_low_0"
             )
-        self.prompt=Prompt(self.config)
+        self.prompt=Prompt(
+            memobase_token=self.config.memobase_token,
+            memobase_uid=self.config.memobase_uid
+        )
     
     async def chat(self) -> list:
         """
         一开始不要想着自动化，先手动控制流程
         """
-        client = Client(SSETransport(url='http://localhost:9000/sse')) 
-        async with client:
-            assert client.is_connected()
-            tools = await client.list_tools()
-        prompt=self.prompt.get_prompt(tools)
+        clients = {
+            mcpServer:Client(SSETransport(url=self.config.mcpServers[mcpServer].url)) 
+            for mcpServer in self.config.mcpServers
+        }
+    
+        prompt=await self.prompt.get_prompt(clients)
+        
         messages = [
             {
                 "role":"system",
@@ -158,9 +163,10 @@ class TinyAgenticRAG:
                 "role": "user",
                 "content": [
                     # {"type": "image","image": "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg",},
-                    {"type": "text", "text": "请你给出我一些投资建议。\
-你要将我的问题当作query，使用rag mcp中的rewrite query来改写query，使用search query来逐一查询改写后的query来获取更多的相关信息。\
-最后综合利用所有的信息来回答原始的query。"},
+                    {"type": "text", "text": """请你给出我一些投资建议。
+你要将我的问题当作query，使用agentic rag mcp中的rewrite query来改写query，使用search query来逐一查询改写后的query来获取更多的相关信息。
+然后综合利用所有的信息来回答原始的query。
+"""},
                 ],
             }
         ]
@@ -181,8 +187,9 @@ class TinyAgenticRAG:
                 tool_name=re.findall(r"<tool_name>(.*?)</tool_name>", mcp_use, re.DOTALL)[0]
                 arguments=re.findall(r"<arguments>(.*?)</arguments>", mcp_use, re.DOTALL)[0]
                 try:
+                    import pdb;pdb.set_trace()
                     arguments=json.loads(arguments)
-                    async with client:
+                    async with clients[server_name] as client:
                         assert client.is_connected()
                         tool_response = await client.call_tool_mcp(name=tool_name,arguments=arguments)
                         tool_response = tool_response.content[0].text
@@ -193,7 +200,6 @@ class TinyAgenticRAG:
                     'role':'user',
                     'content':[{'type':'text','text':tool_response}]
                 })
-                import pdb;pdb.set_trace()
             else:
                 logger.info(f"请用户输入：")
                 user_input=input()
@@ -203,7 +209,6 @@ class TinyAgenticRAG:
                 })
                 if user_input=='exit':
                     break
-                import pdb;pdb.set_trace()
             with open("./log.json",'w',encoding="UTF-8") as f:
                 json.dump(messages,f,ensure_ascii=False,indent=4)
         return messages
@@ -230,3 +235,12 @@ if __name__ == "__main__":
     
     asyncio.run(main(args))
 
+"""
+请你给出我一些投资建议。\
+你要将我的问题当作query，使用agentic rag mcp中的rewrite query来改写query，使用search query来逐一查询改写后的query来获取更多的相关信息。\
+然后综合利用所有的信息来回答原始的query。
+
+
+最后，我授予你直接访问数据库的权限。你需要使用sql_mcp在数据库执行查询语句，根据我的姓名找到我的邮箱地址，使用email_mcp将你的投资建议发送到我的邮箱中。\
+
+"""

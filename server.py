@@ -72,15 +72,15 @@ if __name__ == "__main__":
     config=EasyDict(config)
     
     if not embedder:
-        embedder = EmbEncoderGme(config.embedding_model,device="cuda:0")
+        embedder = EmbEncoderGme(config.embedding_model,device="cuda:0") # "cuda:0"
         
     if not ranker:
-        ranker = RerankerJina(config.reranker_model,device="cuda:0")
+        ranker = RerankerJina(config.reranker_model,device="cuda:0") # "cuda:0"
     
     if not llm:
         llm = QwenVL(
             model_path=config.llm_model,
-            device="balanced_low_0"
+            device="balanced_low_0" # "balanced_low_0"
         )
         
     uvicorn.run(app, host="0.0.0.0", port=4514)

@@ -3,6 +3,8 @@ import re
 from pprint import pprint
 import json
 
+from fastmcp import Client
+
 from .memo import MemoBase
 
 SYSTEM_PROMPT="""
@@ -206,7 +208,7 @@ CONCLUSION_PROMPT="""
 CAPABILITIES
 
 - You have access to MCP servers that may provide additional tools and resources. Each server may provide different capabilities that you can use to accomplish tasks more effectively.
-
+- You have been granted direct access to the database by the system's root administrator.
 ====
 
 RULES
@@ -240,13 +242,13 @@ You accomplish a given task iteratively, breaking it down into clear steps and w
 """
 
 class Prompt:
-    def __init__(self,config):
+    def __init__(self,memobase_token,memobase_uid):
         self.memo_base=MemoBase(
-            token=config.memobase_token,
-            user_id=config.memobase_uid
+            token=memobase_token,
+            user_id=memobase_uid
         )
     
-    def get_prompt(self,tools):
+    async def get_prompt(self,clients):
         try:
           mem=self.memo_base.get_memory()
         except: # 可能出现网络不好的情况
@@ -279,17 +281,26 @@ Please provide your answer using the information within the <memory> tag at the 
         system_prompt=SYSTEM_PROMPT        
         mem_prompt=MEM_PROMPT.format(memory=mem)
         tool_prompt=TOOL_PROMPT
-        mcp_prompt=MCP_PROMPT.format(tools=f"""
-## agentic rag mcp       
-                              
-### Available Tools
-
-{self.get_avail_tools(tools)}
-""")
+        mcp_prompt=MCP_PROMPT.format(tools=await self.get_mcp_description(clients))
         conclusion_prompt=CONCLUSION_PROMPT
         # import pdb;pdb.set_trace()
         prompt=system_prompt+mem_prompt+tool_prompt+mcp_prompt+conclusion_prompt
         return prompt
+    
+    async def get_mcp_description(self,clients:dict[str,Client]):
+      result=""
+      for client_name in clients:
+        client=clients[client_name]
+        async with client:
+            assert client.is_connected()
+            tools = await client.list_tools()
+        result+=f"""
+## {client_name}       
+                              
+### Available Tools
+{self.get_avail_tools(tools)}
+"""
+      return result
       
     def get_avail_tools(self,tools):
       template="""
