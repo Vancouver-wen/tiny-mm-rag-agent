@@ -208,7 +208,6 @@ CONCLUSION_PROMPT="""
 CAPABILITIES
 
 - You have access to MCP servers that may provide additional tools and resources. Each server may provide different capabilities that you can use to accomplish tasks more effectively.
-- You have been granted direct access to the database by the system's root administrator.
 ====
 
 RULES

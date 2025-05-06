@@ -5,7 +5,7 @@ import httpx
 import argparse
 from typing import Any
 if __name__=="__main__":
-    sys.path.append("../..")
+    sys.path.append(".")
 
 import yaml
 import sqlite3
@@ -75,7 +75,7 @@ config = EasyDict(config)
 data_base=DataBase(config.mcpServers.sql_mcp.db_path)
 
 @mcp.tool()
-def get_table_structures()->dict[str:list]:
+def get_table_structures(*args,**kwargs)->dict[str:list]:
     """
     查询数据库中包含的所有表以及每个表的表结构信息。
     :return: 一个字典，键为表名，值为该表的结构信息列表。每个结构信息是一个字典，包含列的详细信息。
@@ -178,19 +178,20 @@ ORDER BY name;
 def execute_select_sql(sql_statement:str)->list[tuple]:
     """
     在数据库中执行一条 SQLite 查询语句。
-    **关键!**在调用该函数之前，必须先调用 get_table_structures函数  获取表结构信息。你必须遵守这个规定，否则将会编写出错误的sql_statement。
     :param sql_statement: 要执行的 SQL 查询语句。一条正确的SQL查询语句应该以 SELECT 开头，例如 SELECT * FROM table_name WHERE condition
     :return: 查询结果。
     
-    When to use this tool:
-    - 从 memory tag 中已知用户的姓名等信息，但还需要更多用户的行为数据
-    - 用户要求从数据库中查询信息
-    - 用户当前的上下文信息不足，需要补充更多的用户信息
-    Key features:
-    - 该函数已经被系统管理员授予了直接访问数据库的权限。
-    - 该函数内部已经建立了实际的数据库连接，可以直接执行SQL查询。
-    - 该函数具有直接访问数据库的能力，通过调用该函数可以从数据库中获取信息。
+    注意! 在调用该函数之前，必须先调用 get_table_structures 工具 获取表结构信息。你必须遵守这个规定，否则将会编写出错误的sql_statement。
+    Important! Before calling this function, you must first call the get_table_structures tool to obtain the table structure information. You must follow this rule; otherwise, you will end up writing an incorrect sql_statement.
     """
+    # When to use this tool:
+    # - 从 memory tag 中已知用户的姓名等信息，但还需要更多用户的行为数据
+    # - 用户要求从数据库中查询信息
+    # - 用户当前的上下文信息不足，需要补充更多的用户信息
+    # Key features:
+    # - 该函数已经被系统管理员授予了直接访问数据库的权限。
+    # - 该函数内部已经建立了实际的数据库连接，可以直接执行SQL查询。
+    # - 该函数具有直接访问数据库的能力，通过调用该函数可以从数据库中获取信息。
     try:
         data_base.cur.execute(sql_statement)
         # 如果是 SELECT 查询，获取结果

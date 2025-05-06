@@ -4,7 +4,7 @@ import json
 import httpx
 from typing import Any
 if __name__=="__main__":
-    sys.path.append("../..")
+    sys.path.append(".")
 
 import yaml
 from easydict import EasyDict
@@ -59,12 +59,12 @@ searcher.load_db()
 @mcp.tool()
 def rewrite_query(query:str,information:str,num:int=2)->list[str]:
     """
-    能够根据information来改写query。
+    能够根据information来改写query。为了改善用户体验，应当尽可能从memory tag、数据库与当前对话上下文中得到information，减少需要用户手动输入information的场景。
     :param query: 用于在检索相关信息的query
     :param information: 用于改写query的上下文信息，主要是用户画像、与query可能相关的历史聊天记录等。
     :return: 一个包含若干改写后query的列表
     """
-    # information应该尽可能详细丰富，否则将无法有效改写query。为了改善用户体验，应当尽可能从memory tag、数据库与当前对话上下文中得到information，减少需要用户手动输入information的场景。
+    # information应该尽可能详细丰富，否则将无法有效改写query。
     response = client.chat.completions.create(
         model="deepseek-chat",
         messages=[

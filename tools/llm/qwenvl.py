@@ -8,7 +8,7 @@ from qwen_vl_utils import process_vision_info
 from loguru import logger
 
 class QwenVL:
-    def __init__(self,model_path:str,device:str,min_pixels = 25*28*28,max_pixels = 100*28*28):
+    def __init__(self,model_path:str,device:str,min_pixels = 25*28*28,max_pixels = 64*28*28):
         # default: Load the model on the available device(s)
         self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             pretrained_model_name_or_path=model_path, 

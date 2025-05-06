@@ -6,6 +6,7 @@ import json
 import asyncio
 from pprint import pprint
 import re
+import time
 
 import torch
 import yaml
@@ -187,15 +188,14 @@ class TinyAgenticRAG:
                 tool_name=re.findall(r"<tool_name>(.*?)</tool_name>", mcp_use, re.DOTALL)[0]
                 arguments=re.findall(r"<arguments>(.*?)</arguments>", mcp_use, re.DOTALL)[0]
                 try:
-                    import pdb;pdb.set_trace()
                     arguments=json.loads(arguments)
                     async with clients[server_name] as client:
                         assert client.is_connected()
                         tool_response = await client.call_tool_mcp(name=tool_name,arguments=arguments)
                         tool_response = tool_response.content[0].text
                         tool_response = f"[use_mcp_tool for '{tool_name}' in '{server_name}'] Result: \n {tool_response}"
-                except:
-                    tool_response=f"mcp tool: {tool_name} call failed. \n"
+                except Exception as e:
+                    tool_response=f"mcp tool: {tool_name} call failed with Exception: {e} \n"
                 messages.append({
                     'role':'user',
                     'content':[{'type':'text','text':tool_response}]
@@ -241,6 +241,6 @@ if __name__ == "__main__":
 然后综合利用所有的信息来回答原始的query。
 
 
-最后，我授予你直接访问数据库的权限。你需要使用sql_mcp在数据库执行查询语句，根据我的姓名找到我的邮箱地址，使用email_mcp将你的投资建议发送到我的邮箱中。\
+最后，我授予你直接访问数据库的权限。你需要使用sql_mcp先查询表结构然后执行查询语句，根据我的姓名找到我的邮箱地址，使用email_mcp将你的投资建议发送到我的邮箱中。\
 
 """

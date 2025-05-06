@@ -46,14 +46,22 @@ context 2
 ```
 
 ### 运行
-修改config/config.yaml中的 chunk_file 路径
 ```bash
-python main.py --build # 构建向量数据库
-python main.py # RAG
+# 运行server，提供模型服务
+python server.py --config config/config.yaml
+# 运行 rag mcp
+python ./tools/agent/mcp-rag-server.py --config config/config.yaml
+# 运行 sql mcp
+python ./tools/agent/mcp-sql-server.py --config config/config.yaml
+# 运行 email mcp
+python ./tools/agent/mcp-email-server.py --config config/config.yaml
+
+# 运行 agent
+python main.py --config config/config.yaml
 ```
 
 ### TODO
-1. 使用[sql-lite](https://www.runoob.com/sqlite/sqlite-python.html)构建 用户行为序列数据库 用户的姓名，邮箱，历史投资信息
+1. [] 使用[sql-lite](https://www.runoob.com/sqlite/sqlite-python.html)构建 用户行为序列数据库 用户的姓名，邮箱，历史投资信息
 2. 使用[memobase](https://github.com/memodb-io/memobase)根据历史聊天记录构建agent
 3. 使用[mcp](https://modelcontextprotocol.io/quickstart/client)来构建agent，初步实现agentic rag与send email功能
 4. 借鉴[deep research]()构建真正的agentic rag

@@ -8,7 +8,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
 if __name__=="__main__":
-    sys.path.append("../..")
+    sys.path.append(".")
 
 import yaml
 from easydict import EasyDict
